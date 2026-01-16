@@ -1,13 +1,13 @@
 """
 Complete Tkinter UI for Tourism Data Collector
-4 Tabs: Data Collection, View Data, Export Data, Manual Entry
+5 TABS: Dashboard, Data Collection, View Data, Export Data, Manual Entry
 With Auto AI Download, DuckDuckGo Validation, Weekly Revalidation
 """
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 import threading
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database.db_manager import DatabaseManager
 from ai.data_validator import DataValidator
@@ -71,7 +71,8 @@ class TourismApp:
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Create all 4 tabs
+        # Create all 5 tabs (Dashboard is first)
+        self.create_dashboard_tab()
         self.create_collection_tab()
         self.create_view_tab()
         self.create_export_tab()
@@ -89,6 +90,276 @@ class TourismApp:
             font=('Arial', 10)
         )
         self.status_label.pack(pady=7)
+    
+    def create_dashboard_tab(self):
+        """Dashboard Tab with Statistics and Verified Badges"""
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text="📊 Dashboard")
+        
+        # Main container with scrollbar
+        container = tk.Frame(tab, bg='#f0f0f0')
+        container.pack(fill=tk.BOTH, expand=True)
+        
+        # Canvas for scrolling
+        canvas = tk.Canvas(container, bg='#f0f0f0')
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='#f0f0f0')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Header
+        header_frame = tk.Frame(scrollable_frame, bg='#2196F3', height=80)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(
+            header_frame,
+            text="🎯 Dashboard Overview",
+            font=('Arial', 24, 'bold'),
+            bg='#2196F3',
+            fg='white'
+        ).pack(pady=15)
+        
+        # Refresh button
+        refresh_frame = tk.Frame(scrollable_frame, bg='#f0f0f0')
+        refresh_frame.pack(pady=10)
+        
+        tk.Button(
+            refresh_frame,
+            text="🔄 Refresh Dashboard",
+            command=self.refresh_dashboard,
+            bg='#4CAF50',
+            fg='white',
+            font=('Arial', 12, 'bold'),
+            padx=25,
+            pady=10,
+            cursor='hand2',
+            relief=tk.RAISED,
+            bd=3
+        ).pack()
+        
+        # Statistics Cards Row 1
+        stats_frame1 = tk.Frame(scrollable_frame, bg='#f0f0f0')
+        stats_frame1.pack(fill=tk.X, padx=30, pady=10)
+        
+        # Create stat cards
+        self.total_hotels_card = self.create_stat_card(
+            stats_frame1, "🏨 Total Hotels", "0", "#FF5722", 0
+        )
+        self.verified_hotels_card = self.create_stat_card(
+            stats_frame1, "✅ Verified Hotels", "0", "#4CAF50", 1
+        )
+        self.unverified_hotels_card = self.create_stat_card(
+            stats_frame1, "❌ Unverified Hotels", "0", "#9E9E9E", 2
+        )
+        
+        # Statistics Cards Row 2
+        stats_frame2 = tk.Frame(scrollable_frame, bg='#f0f0f0')
+        stats_frame2.pack(fill=tk.X, padx=30, pady=10)
+        
+        self.total_places_card = self.create_stat_card(
+            stats_frame2, "🏞️ Tourist Places", "0", "#2196F3", 0
+        )
+        self.verified_places_card = self.create_stat_card(
+            stats_frame2, "✅ Verified Places", "0", "#009688", 1
+        )
+        self.total_services_card = self.create_stat_card(
+            stats_frame2, "🚌 Travel Services", "0", "#FF9800", 2
+        )
+        
+        # Recent Data Section
+        recent_frame = tk.LabelFrame(
+            scrollable_frame,
+            text="🕒 Recently Added Data",
+            font=('Arial', 14, 'bold'),
+            bg='white',
+            padx=20,
+            pady=15
+        )
+        recent_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=20)
+        
+        # Recent data table
+        table_frame = tk.Frame(recent_frame, bg='white')
+        table_frame.pack(fill=tk.BOTH, expand=True)
+        
+        scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
+        scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
+        
+        self.dashboard_tree = ttk.Treeview(
+            table_frame,
+            columns=('Type', 'Name', 'City', 'State', 'Rating', 'Price', 'Verified', 'Validated'),
+            show='headings',
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set,
+            height=10
+        )
+        
+        scroll_y.config(command=self.dashboard_tree.yview)
+        scroll_x.config(command=self.dashboard_tree.xview)
+        
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        self.dashboard_tree.pack(fill=tk.BOTH, expand=True)
+        
+        # Column headings
+        columns = {
+            'Type': 100,
+            'Name': 250,
+            'City': 150,
+            'State': 150,
+            'Rating': 100,
+            'Price': 120,
+            'Verified': 100,
+            'Validated': 120
+        }
+        
+        for col, width in columns.items():
+            self.dashboard_tree.heading(col, text=col)
+            self.dashboard_tree.column(col, width=width)
+        
+        # Configure tag colors for verified status
+        self.dashboard_tree.tag_configure('verified', background='#E8F5E9')
+        self.dashboard_tree.tag_configure('unverified', background='#FFEBEE')
+        
+        # Validation Stats
+        validation_frame = tk.LabelFrame(
+            scrollable_frame,
+            text="📊 Validation Statistics",
+            font=('Arial', 14, 'bold'),
+            bg='white',
+            padx=20,
+            pady=15
+        )
+        validation_frame.pack(fill=tk.X, padx=30, pady=20)
+        
+        self.validation_stats_label = tk.Label(
+            validation_frame,
+            text="Loading statistics...",
+            font=('Arial', 11),
+            bg='white',
+            justify=tk.LEFT,
+            fg='#424242'
+        )
+        self.validation_stats_label.pack(anchor=tk.W, pady=10)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Initial data load
+        self.root.after(500, self.refresh_dashboard)
+    
+    def create_stat_card(self, parent, title, value, color, column):
+        """Create a statistics card"""
+        card = tk.Frame(parent, bg=color, relief=tk.RAISED, bd=3)
+        card.grid(row=0, column=column, padx=15, pady=10, sticky='nsew')
+        parent.grid_columnconfigure(column, weight=1)
+        
+        # Title
+        tk.Label(
+            card,
+            text=title,
+            font=('Arial', 12, 'bold'),
+            bg=color,
+            fg='white'
+        ).pack(pady=(15, 5))
+        
+        # Value
+        value_label = tk.Label(
+            card,
+            text=value,
+            font=('Arial', 32, 'bold'),
+            bg=color,
+            fg='white'
+        )
+        value_label.pack(pady=(5, 15))
+        
+        # Store reference for updating
+        card.value_label = value_label
+        
+        return card
+    
+    def refresh_dashboard(self):
+        """Refresh dashboard data"""
+        # Get all data
+        hotels = self.db.get_all_hotels()
+        places = self.db.get_all_tourist_places()
+        
+        # Count verified/unverified
+        verified_hotels = sum(1 for h in hotels if h.get('verified', 0) == 1)
+        unverified_hotels = len(hotels) - verified_hotels
+        
+        verified_places = sum(1 for p in places if p.get('verified', 0) == 1)
+        
+        # Update stat cards
+        self.total_hotels_card.value_label.config(text=str(len(hotels)))
+        self.verified_hotels_card.value_label.config(text=str(verified_hotels))
+        self.unverified_hotels_card.value_label.config(text=str(unverified_hotels))
+        self.total_places_card.value_label.config(text=str(len(places)))
+        self.verified_places_card.value_label.config(text=str(verified_places))
+        self.total_services_card.value_label.config(text="0")
+        
+        # Clear table
+        for item in self.dashboard_tree.get_children():
+            self.dashboard_tree.delete(item)
+        
+        # Add recent hotels (last 20)
+        recent_hotels = sorted(hotels, key=lambda x: x.get('created_at', ''), reverse=True)[:20]
+        
+        for hotel in recent_hotels:
+            verified = hotel.get('verified', 0) == 1
+            tag = 'verified' if verified else 'unverified'
+            
+            self.dashboard_tree.insert('', tk.END, values=(
+                'Hotel',
+                hotel.get('name', ''),
+                hotel.get('city', ''),
+                hotel.get('state', ''),
+                f"{hotel.get('rating', 0.0):.1f}⭐",
+                f"₹{hotel.get('price', 0)}",
+                "✅ Verified" if verified else "❌ Not Verified",
+                hotel.get('last_validated_at', 'Never')[:10] if hotel.get('last_validated_at') else 'Never'
+            ), tags=(tag,))
+        
+        # Add recent places
+        recent_places = sorted(places, key=lambda x: x.get('created_at', ''), reverse=True)[:10]
+        
+        for place in recent_places:
+            verified = place.get('verified', 0) == 1
+            tag = 'verified' if verified else 'unverified'
+            
+            self.dashboard_tree.insert('', tk.END, values=(
+                'Tourist Place',
+                place.get('name', ''),
+                place.get('city', ''),
+                place.get('state', ''),
+                'N/A',
+                f"₹{place.get('entry_fee', 0)}",
+                "✅ Verified" if verified else "❌ Not Verified",
+                place.get('last_validated_at', 'Never')[:10] if place.get('last_validated_at') else 'Never'
+            ), tags=(tag,))
+        
+        # Update validation stats
+        old_hotels = self.db.get_hotels_needing_revalidation(REVALIDATION_INTERVAL_DAYS)
+        
+        stats_text = f"""
+📋 Total Records: {len(hotels) + len(places)}
+✅ Total Verified: {verified_hotels + verified_places}
+❌ Total Unverified: {unverified_hotels + (len(places) - verified_places)}
+♻️ Need Revalidation: {len(old_hotels)} hotels (>{REVALIDATION_INTERVAL_DAYS} days old)
+📅 Last Refresh: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        
+        self.validation_stats_label.config(text=stats_text)
+        
+        # Update status
+        self.status_label.config(
+            text=f"✅ Dashboard Updated | Hotels: {len(hotels)} | Places: {len(places)} | Verified: {verified_hotels + verified_places}"
+        )
     
     def create_collection_tab(self):
         """Data Collection Tab"""
@@ -429,6 +700,7 @@ class TourismApp:
         self.root.after(100, lambda: messagebox.showinfo("Success", f"Data collection completed!\n\nState: {state}\nPlace: {place}\nType: {data_type}"))
         self.root.after(200, lambda: self.collect_btn.config(state=tk.NORMAL))
         self.root.after(200, lambda: self.stop_btn.config(state=tk.DISABLED))
+        self.root.after(300, self.refresh_dashboard)
     
     def stop_collection(self):
         """Stop collection"""
@@ -489,6 +761,7 @@ class TourismApp:
         self.root.after(0, lambda: messagebox.showinfo("Success", f"Revalidated {total} hotels successfully!"))
         self.root.after(0, lambda: self.revalidate_btn.config(state=tk.NORMAL))
         self.root.after(0, self.refresh_table)
+        self.root.after(0, self.refresh_dashboard)
     
     def update_progress(self, value, text):
         """Update progress"""
@@ -613,6 +886,7 @@ class TourismApp:
             messagebox.showinfo("Success", f"Hotel added successfully!\n\nVerified: {verification['found']}\nRating: {hotel_data.get('rating', 0.0):.1f}⭐")
             self.clear_form()
             self.refresh_table()
+            self.refresh_dashboard()
         except Exception as e:
             messagebox.showerror("Error", f"Failed: {str(e)}")
     
