@@ -1,20 +1,16 @@
 """
 Tourism Data Collector
 A comprehensive Windows application for collecting and validating tourism data across India
+Built with Tkinter UI and lightweight AI model
 """
-import sys
-from PyQt5.QtWidgets import QApplication
-from ui.main_window import MainWindow
+import tkinter as tk
+from ui.main_window import TourismApp
 
 def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName("Tourism Data Collector")
-    app.setOrganizationName("Nexuzy Tech")
-    
-    window = MainWindow()
-    window.show()
-    
-    sys.exit(app.exec_())
+    """Main application entry point"""
+    root = tk.Tk()
+    app = TourismApp(root)
+    root.mainloop()
 
 if __name__ == "__main__":
     main()

@@ -1,31 +1,29 @@
-# UI Framework
-PyQt5==5.15.10
-PyQt5-Qt5==5.15.2
-PyQt5-sip==12.13.0
+# UI Framework - Tkinter (built-in with Python)
+# No need to install tkinter, it comes with Python
+
+# Lightweight AI Model - Under 500MB
+transformers==4.36.2
+sentence-transformers==2.2.2
+torch==2.1.2
+
+# Web Scraping & Internet Access
+beautifulsoup4==4.12.2
+requests==2.31.0
+selenium==4.16.0
+lxml==4.9.3
+googlesearch-python==1.2.3
 
 # Data Processing
 pandas==2.1.4
 numpy==1.26.2
 
-# Web Scraping
-beautifulsoup4==4.12.2
-requests==2.31.0
-selenium==4.16.0
-lxml==4.9.3
-
-# AI/ML - Open Source Models
-transformers==4.36.2
-torch==2.1.2
-sentence-transformers==2.2.2
-
 # Data Validation
 validators==0.22.0
-python-dotenv==1.0.0
+python-dateutil==2.8.2
 
 # Export Utilities
 openpyxl==3.1.2
 xlsxwriter==3.1.9
 
-# Utils
+# Progress bars
 tqdm==4.66.1
-python-dateutil==2.8.2
