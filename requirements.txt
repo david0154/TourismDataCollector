@@ -1,29 +1,20 @@
-# UI Framework - Tkinter (built-in with Python)
-# No need to install tkinter, it comes with Python
-
-# Lightweight AI Model - Under 500MB
-transformers==4.36.2
+# Lightweight AI Model (61MB) - Auto-downloads on first run
 sentence-transformers==2.2.2
 torch==2.1.2
+transformers==4.36.2
 
-# Web Scraping & Internet Access
+# Web Scraping (Backend only, no browser)
 beautifulsoup4==4.12.2
 requests==2.31.0
-selenium==4.16.0
 lxml==4.9.3
-googlesearch-python==1.2.3
 
 # Data Processing
 pandas==2.1.4
 numpy==1.26.2
 
-# Data Validation
-validators==0.22.0
-python-dateutil==2.8.2
-
-# Export Utilities
+# Export
 openpyxl==3.1.2
 xlsxwriter==3.1.9
 
-# Progress bars
+# Progress
 tqdm==4.66.1

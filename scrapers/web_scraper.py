@@ -1,34 +1,48 @@
 """
-Web scraping utilities using BeautifulSoup
+Web Scraper - Backend only, NO browser frontend
+Scrapes data silently in background using requests + BeautifulSoup
 """
 import requests
 from bs4 import BeautifulSoup
-from typing import Dict, List, Optional
-from config import REQUEST_TIMEOUT, USER_AGENT, MAX_RETRIES
+from typing import Dict, Any, List
+import time
+from config import REQUEST_TIMEOUT, USER_AGENT, MAX_RETRIES, SCRAPING_DELAY
 
 class WebScraper:
     def __init__(self):
+        """Initialize scraper with session"""
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': USER_AGENT})
     
-    def get_page(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch and parse web page"""
+    def scrape_page(self, url: str) -> str:
+        """
+        Scrape page content (backend only, no browser window)
+        """
         for attempt in range(MAX_RETRIES):
             try:
                 response = self.session.get(url, timeout=REQUEST_TIMEOUT)
-                if response.status_code == 200:
-                    return BeautifulSoup(response.text, 'html.parser')
+                response.raise_for_status()
+                
+                # Delay to be respectful
+                time.sleep(SCRAPING_DELAY)
+                
+                return response.text
             except Exception as e:
-                if attempt == MAX_RETRIES - 1:
-                    print(f"Failed to fetch {url}: {e}")
-        return None
+                print(f"Scraping attempt {attempt + 1} failed: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(SCRAPING_DELAY * 2)
+        
+        return ""
     
-    def extract_text(self, soup: BeautifulSoup, selector: str) -> str:
-        """Extract text from element"""
-        element = soup.select_one(selector)
-        return element.get_text(strip=True) if element else ""
-    
-    def extract_all_text(self, soup: BeautifulSoup, selector: str) -> List[str]:
-        """Extract text from all matching elements"""
-        elements = soup.select(selector)
-        return [el.get_text(strip=True) for el in elements]
+    def extract_data(self, html: str, selectors: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Extract data from HTML using CSS selectors
+        """
+        soup = BeautifulSoup(html, 'html.parser')
+        data = {}
+        
+        for key, selector in selectors.items():
+            element = soup.select_one(selector)
+            data[key] = element.get_text(strip=True) if element else ""
+        
+        return data

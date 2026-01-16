@@ -1,7 +1,6 @@
 """
 Tourism Data Collector
-A comprehensive Windows application for collecting and validating tourism data across India
-Built with Tkinter UI and lightweight AI model
+Tkinter-based Windows application with auto AI download
 """
 import tkinter as tk
 from ui.main_window import TourismApp

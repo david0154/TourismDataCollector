@@ -1,25 +1,37 @@
 """
-SQLite Database Manager for Tourism Data
+Database Manager with AUTO REVALIDATION support
+Checks and re-validates old data every 7 days using AI
 """
 import sqlite3
 from typing import List, Dict, Any, Optional
-from datetime import datetime
-import os
-from config import DB_PATH
+from datetime import datetime, timedelta
+import json
+from config import DB_PATH, ENABLE_AUTO_REVALIDATION, REVALIDATION_INTERVAL_DAYS
 
 class DatabaseManager:
     def __init__(self):
-        """Initialize database connection and create tables"""
-        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-        self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
+        """Initialize database with auto-revalidation support"""
+        self.db_path = DB_PATH
+        self.conn = None
         self.create_tables()
+        print(f"\u2705 Database connected: {DB_PATH}")
+        
+        if ENABLE_AUTO_REVALIDATION:
+            print(f"\u2705 Auto-revalidation enabled (every {REVALIDATION_INTERVAL_DAYS} days)")
+    
+    def get_connection(self):
+        """Get database connection"""
+        if self.conn is None:
+            self.conn = sqlite3.connect(self.db_path)
+            self.conn.row_factory = sqlite3.Row
+        return self.conn
     
     def create_tables(self):
-        """Create all required tables"""
-        cursor = self.conn.cursor()
+        """Create database tables with validation tracking"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
-        # Hotels table
+        # Hotels table with validation fields
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS hotels (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,19 +44,18 @@ class DatabaseManager:
                 email TEXT,
                 website TEXT,
                 rating REAL DEFAULT 0.0,
-                price_min INTEGER DEFAULT 0,
-                price_max INTEGER DEFAULT 0,
-                price_avg INTEGER DEFAULT 0,
+                price INTEGER DEFAULT 0,
                 room_types TEXT,
                 amenities TEXT,
                 verified INTEGER DEFAULT 0,
-                last_verified TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_validated_at TEXT,
+                validation_source TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        # Tourist Places table
+        # Tourist places with travel routes
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS tourist_places (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,18 +67,20 @@ class DatabaseManager:
                 entry_fee INTEGER,
                 timings TEXT,
                 best_season TEXT,
-                how_to_reach TEXT,
-                nearby_attractions TEXT,
                 latitude REAL,
                 longitude REAL,
+                how_to_reach_air TEXT,
+                how_to_reach_train TEXT,
+                how_to_reach_road TEXT,
+                distances TEXT,
                 verified INTEGER DEFAULT 0,
-                last_verified TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_validated_at TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        # Travel Services table
+        # Travel services
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS travel_services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,24 +91,41 @@ class DatabaseManager:
                 website TEXT,
                 routes TEXT,
                 rates TEXT,
-                city TEXT,
-                state TEXT NOT NULL,
+                state TEXT,
                 verified INTEGER DEFAULT 0,
-                last_verified TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_validated_at TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        self.conn.commit()
+        # Validation log for tracking revalidation
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS validation_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                record_id INTEGER NOT NULL,
+                validation_type TEXT,
+                result TEXT,
+                validated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
     
     def insert_hotel(self, hotel_data: Dict[str, Any]) -> int:
-        """Insert new hotel record"""
-        cursor = self.conn.cursor()
+        """Insert hotel with validation timestamp"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        hotel_data['last_validated_at'] = datetime.now().isoformat()
+        hotel_data['updated_at'] = datetime.now().isoformat()
+        
         cursor.execute('''
-            INSERT INTO hotels (name, address, city, state, pincode, contact, email, 
-                              website, rating, price_min, price_max, price_avg, 
-                              room_types, amenities, verified, last_verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO hotels (
+                name, address, city, state, pincode, contact, email, website,
+                rating, price, room_types, amenities, verified, 
+                last_validated_at, validation_source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             hotel_data.get('name'),
             hotel_data.get('address'),
@@ -106,25 +136,94 @@ class DatabaseManager:
             hotel_data.get('email'),
             hotel_data.get('website'),
             hotel_data.get('rating', 0.0),
-            hotel_data.get('price_min', 0),
-            hotel_data.get('price_max', 0),
-            hotel_data.get('price_avg', 0),
+            hotel_data.get('price', 0),
             hotel_data.get('room_types'),
             hotel_data.get('amenities'),
             hotel_data.get('verified', 0),
-            datetime.now() if hotel_data.get('verified') else None
+            hotel_data.get('last_validated_at'),
+            hotel_data.get('validation_source', 'manual')
         ))
-        self.conn.commit()
+        
+        conn.commit()
         return cursor.lastrowid
     
-    def insert_tourist_place(self, place_data: Dict[str, Any]) -> int:
-        """Insert new tourist place record"""
-        cursor = self.conn.cursor()
+    def update_hotel(self, hotel_id: int, hotel_data: Dict[str, Any]) -> bool:
+        """Update hotel data"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        hotel_data['updated_at'] = datetime.now().isoformat()
+        hotel_data['last_validated_at'] = datetime.now().isoformat()
+        
         cursor.execute('''
-            INSERT INTO tourist_places (name, description, city, state, category,
-                                      entry_fee, timings, best_season, how_to_reach,
-                                      nearby_attractions, latitude, longitude, verified, last_verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            UPDATE hotels SET
+                name = ?, address = ?, city = ?, state = ?, contact = ?,
+                email = ?, website = ?, rating = ?, price = ?, 
+                verified = ?, last_validated_at = ?, updated_at = ?
+            WHERE id = ?
+        ''', (
+            hotel_data.get('name'),
+            hotel_data.get('address'),
+            hotel_data.get('city'),
+            hotel_data.get('state'),
+            hotel_data.get('contact'),
+            hotel_data.get('email'),
+            hotel_data.get('website'),
+            hotel_data.get('rating', 0.0),
+            hotel_data.get('price', 0),
+            hotel_data.get('verified', 0),
+            hotel_data.get('last_validated_at'),
+            hotel_data.get('updated_at'),
+            hotel_id
+        ))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+    
+    def get_all_hotels(self, state: Optional[str] = None) -> List[Dict]:
+        """Get all hotels, optionally filtered by state"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if state:
+            cursor.execute("SELECT * FROM hotels WHERE state = ?", (state,))
+        else:
+            cursor.execute("SELECT * FROM hotels")
+        
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def get_hotels_needing_revalidation(self, days: int = 7) -> List[Dict]:
+        """
+        Get hotels that need revalidation (older than X days)
+        For weekly automatic revalidation
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+        
+        cursor.execute('''
+            SELECT * FROM hotels 
+            WHERE last_validated_at IS NULL 
+            OR last_validated_at < ?
+        ''', (cutoff_date,))
+        
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def insert_tourist_place(self, place_data: Dict[str, Any]) -> int:
+        """Insert tourist place with travel routes"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        place_data['last_validated_at'] = datetime.now().isoformat()
+        
+        cursor.execute('''
+            INSERT INTO tourist_places (
+                name, description, city, state, category, entry_fee, timings,
+                best_season, latitude, longitude, how_to_reach_air, 
+                how_to_reach_train, how_to_reach_road, distances, 
+                verified, last_validated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             place_data.get('name'),
             place_data.get('description'),
@@ -134,75 +233,70 @@ class DatabaseManager:
             place_data.get('entry_fee'),
             place_data.get('timings'),
             place_data.get('best_season'),
-            place_data.get('how_to_reach'),
-            place_data.get('nearby_attractions'),
             place_data.get('latitude'),
             place_data.get('longitude'),
+            json.dumps(place_data.get('how_to_reach_air', [])),
+            json.dumps(place_data.get('how_to_reach_train', [])),
+            json.dumps(place_data.get('how_to_reach_road', [])),
+            json.dumps(place_data.get('distances', {})),
             place_data.get('verified', 0),
-            datetime.now() if place_data.get('verified') else None
+            place_data.get('last_validated_at')
         ))
-        self.conn.commit()
+        
+        conn.commit()
         return cursor.lastrowid
     
-    def get_all_hotels(self, state_filter: Optional[str] = None) -> List[Dict]:
-        """Get all hotels with optional state filter"""
-        cursor = self.conn.cursor()
-        if state_filter:
-            cursor.execute('SELECT * FROM hotels WHERE state = ? ORDER BY created_at DESC', (state_filter,))
+    def get_all_tourist_places(self, state: Optional[str] = None) -> List[Dict]:
+        """Get all tourist places"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if state:
+            cursor.execute("SELECT * FROM tourist_places WHERE state = ?", (state,))
         else:
-            cursor.execute('SELECT * FROM hotels ORDER BY created_at DESC')
+            cursor.execute("SELECT * FROM tourist_places")
         
-        return [dict(row) for row in cursor.fetchall()]
-    
-    def get_all_tourist_places(self, state_filter: Optional[str] = None) -> List[Dict]:
-        """Get all tourist places with optional state filter"""
-        cursor = self.conn.cursor()
-        if state_filter:
-            cursor.execute('SELECT * FROM tourist_places WHERE state = ? ORDER BY created_at DESC', (state_filter,))
-        else:
-            cursor.execute('SELECT * FROM tourist_places ORDER BY created_at DESC')
+        places = []
+        for row in cursor.fetchall():
+            place = dict(row)
+            # Parse JSON fields
+            for field in ['how_to_reach_air', 'how_to_reach_train', 'how_to_reach_road', 'distances']:
+                if place.get(field):
+                    try:
+                        place[field] = json.loads(place[field])
+                    except:
+                        pass
+            places.append(place)
         
-        return [dict(row) for row in cursor.fetchall()]
+        return places
     
-    def update_hotel_verification(self, hotel_id: int, verification_data: Dict[str, Any]):
-        """Update hotel verification data"""
-        cursor = self.conn.cursor()
+    def log_validation(self, table_name: str, record_id: int, 
+                      validation_type: str, result: str):
+        """Log validation activity"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
         cursor.execute('''
-            UPDATE hotels 
-            SET rating = ?, price_min = ?, price_max = ?, price_avg = ?,
-                verified = 1, last_verified = ?, updated_at = ?
-            WHERE id = ?
-        ''', (
-            verification_data.get('rating', 0.0),
-            verification_data.get('price_min', 0),
-            verification_data.get('price_max', 0),
-            verification_data.get('price_avg', 0),
-            datetime.now(),
-            datetime.now(),
-            hotel_id
-        ))
-        self.conn.commit()
-    
-    def get_old_unverified_records(self, days: int = 30) -> List[Dict]:
-        """Get records older than specified days for re-validation"""
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            SELECT * FROM hotels 
-            WHERE last_verified IS NULL 
-               OR julianday('now') - julianday(last_verified) > ?
-            ORDER BY last_verified ASC
-        ''', (days,))
+            INSERT INTO validation_log (table_name, record_id, validation_type, result)
+            VALUES (?, ?, ?, ?)
+        ''', (table_name, record_id, validation_type, result))
         
-        return [dict(row) for row in cursor.fetchall()]
+        conn.commit()
     
     def check_duplicate(self, table: str, name: str, city: str, state: str) -> bool:
         """Check if record already exists"""
-        cursor = self.conn.cursor()
-        cursor.execute(f'SELECT COUNT(*) FROM {table} WHERE name = ? AND city = ? AND state = ?',
-                      (name, city, state))
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(f'''
+            SELECT COUNT(*) FROM {table} 
+            WHERE name = ? AND city = ? AND state = ?
+        ''', (name, city, state))
+        
         count = cursor.fetchone()[0]
         return count > 0
     
     def close(self):
         """Close database connection"""
-        self.conn.close()
+        if self.conn:
+            self.conn.close()

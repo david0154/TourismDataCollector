@@ -42,25 +42,16 @@ INDIAN_STATES = {
 }
 
 TOURIST_PLACES = {
-    "Rajasthan": ["Jaipur", "Udaipur", "Jaisalmer", "Jodhpur", "Pushkar", "Mount Abu", "Bikaner", "Ajmer"],
-    "Kerala": ["Munnar", "Alleppey", "Kochi", "Kovalam", "Wayanad", "Thekkady", "Varkala", "Kumarakom"],
-    "Goa": ["Panaji", "Calangute", "Baga", "Anjuna", "Palolem", "Vagator", "Candolim", "Old Goa"],
-    "Himachal Pradesh": ["Shimla", "Manali", "Dharamshala", "Kullu", "Kasol", "Dalhousie", "Spiti Valley", "Mcleodganj"],
-    "Uttarakhand": ["Nainital", "Mussoorie", "Rishikesh", "Haridwar", "Dehradun", "Auli", "Jim Corbett", "Kedarnath"],
-    "Tamil Nadu": ["Chennai", "Ooty", "Kodaikanal", "Mahabalipuram", "Madurai", "Rameswaram", "Kanyakumari", "Pondicherry"],
-    "Karnataka": ["Bangalore", "Mysore", "Coorg", "Hampi", "Chikmagalur", "Gokarna", "Badami", "Udupi"],
-    "Maharashtra": ["Mumbai", "Pune", "Lonavala", "Mahabaleshwar", "Nashik", "Aurangabad", "Alibaug", "Matheran"],
-    "West Bengal": ["Kolkata", "Darjeeling", "Digha", "Sundarbans", "Kalimpong", "Dooars", "Mandarmani", "Shantiniketan"],
-    "Uttar Pradesh": ["Agra", "Varanasi", "Lucknow", "Mathura", "Vrindavan", "Allahabad", "Ayodhya", "Sarnath"],
-    "Gujarat": ["Ahmedabad", "Gir National Park", "Dwarka", "Somnath", "Rann of Kutch", "Saputara", "Diu", "Statue of Unity"],
-    "Madhya Pradesh": ["Bhopal", "Indore", "Khajuraho", "Gwalior", "Ujjain", "Pachmarhi", "Sanchi", "Omkareshwar"],
-    "Delhi": ["India Gate", "Red Fort", "Qutub Minar", "Lotus Temple", "Humayun's Tomb", "Akshardham", "Chandni Chowk"],
-    "Jammu and Kashmir": ["Srinagar", "Gulmarg", "Pahalgam", "Sonamarg", "Leh", "Kargil", "Patnitop"],
-    "Andhra Pradesh": ["Tirupati", "Visakhapatnam", "Araku Valley", "Vijayawada"],
-    "Telangana": ["Hyderabad", "Warangal", "Ramoji Film City", "Khammam"],
-    "Assam": ["Guwahati", "Kaziranga", "Majuli", "Sivasagar", "Tezpur"],
-    "Punjab": ["Amritsar", "Chandigarh", "Ludhiana", "Patiala", "Anandpur Sahib"],
-    "Odisha": ["Puri", "Bhubaneswar", "Konark", "Chilika Lake", "Cuttack"]
+    "Rajasthan": ["Jaipur", "Udaipur", "Jaisalmer", "Jodhpur", "Pushkar", "Mount Abu"],
+    "Kerala": ["Munnar", "Alleppey", "Kochi", "Kovalam", "Wayanad", "Thekkady"],
+    "Goa": ["Panaji", "Calangute", "Baga", "Anjuna", "Palolem", "Vagator"],
+    "Himachal Pradesh": ["Shimla", "Manali", "Dharamshala", "Kullu", "Kasol", "Dalhousie"],
+    "Uttarakhand": ["Nainital", "Mussoorie", "Rishikesh", "Haridwar", "Dehradun", "Auli"],
+    "Tamil Nadu": ["Chennai", "Ooty", "Kodaikanal", "Mahabalipuram", "Madurai", "Rameswaram"],
+    "Karnataka": ["Bangalore", "Mysore", "Coorg", "Hampi", "Chikmagalur", "Gokarna"],
+    "Maharashtra": ["Mumbai", "Pune", "Lonavala", "Mahabaleshwar", "Nashik", "Aurangabad"],
+    "West Bengal": ["Kolkata", "Darjeeling", "Digha", "Sundarbans", "Kalimpong", "Dooars"],
+    "Uttar Pradesh": ["Agra", "Varanasi", "Lucknow", "Mathura", "Vrindavan", "Allahabad"]
 }
 
 def get_tourist_places(state: str):
