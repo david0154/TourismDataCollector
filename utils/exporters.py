@@ -5,6 +5,7 @@ import json
 import csv
 import pandas as pd
 from typing import List, Dict, Any
+import xml.etree.ElementTree as ET
 
 class DataExporter:
     def export_to_json(self, data: List[Dict[str, Any]], file_path: str):
@@ -30,15 +31,13 @@ class DataExporter:
     
     def export_to_xml(self, data: List[Dict[str, Any]], file_path: str):
         """Export data to XML format"""
-        import xml.etree.ElementTree as ET
-        
         root = ET.Element("tourism_data")
         
         for item in data:
             record = ET.SubElement(root, "record")
             for key, value in item.items():
                 element = ET.SubElement(record, key)
-                element.text = str(value)
+                element.text = str(value) if value is not None else ""
         
         tree = ET.ElementTree(root)
         tree.write(file_path, encoding='utf-8', xml_declaration=True)

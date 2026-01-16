@@ -56,7 +56,7 @@ TOURIST_PLACES = {
     "Madhya Pradesh": ["Bhopal", "Indore", "Khajuraho", "Gwalior", "Ujjain", "Pachmarhi", "Sanchi", "Omkareshwar"],
     "Delhi": ["India Gate", "Red Fort", "Qutub Minar", "Lotus Temple", "Humayun's Tomb", "Akshardham", "Chandni Chowk"],
     "Jammu and Kashmir": ["Srinagar", "Gulmarg", "Pahalgam", "Sonamarg", "Leh", "Kargil", "Patnitop"],
-    "Andhra Pradesh": ["Tirupati", "Visakhapatnam", "Araku Valley", "Vijayawada", "Hyderabad"],
+    "Andhra Pradesh": ["Tirupati", "Visakhapatnam", "Araku Valley", "Vijayawada"],
     "Telangana": ["Hyderabad", "Warangal", "Ramoji Film City", "Khammam"],
     "Assam": ["Guwahati", "Kaziranga", "Majuli", "Sivasagar", "Tezpur"],
     "Punjab": ["Amritsar", "Chandigarh", "Ludhiana", "Patiala", "Anandpur Sahib"],

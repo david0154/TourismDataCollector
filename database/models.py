@@ -1,56 +1,42 @@
 """
-Database models for tourism data
+Data models for tourism entities
 """
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Optional
+from datetime import datetime
 
 @dataclass
 class Hotel:
-    id: Optional[int] = None
-    name: str = ""
-    address: str = ""
-    city: str = ""
-    state: str = ""
-    contact: str = ""
-    email: str = ""
-    website: str = ""
-    room_types: str = ""  # JSON string
-    rates: str = ""  # JSON string
-    amenities: str = ""  # JSON string
+    name: str
+    city: str
+    state: str
+    address: Optional[str] = None
+    pincode: Optional[str] = None
+    contact: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
     rating: float = 0.0
-    verified: bool = False
-    created_at: datetime = None
-    updated_at: datetime = None
+    price_min: int = 0
+    price_max: int = 0
+    price_avg: int = 0
+    room_types: Optional[str] = None
+    amenities: Optional[str] = None
+    verified: int = 0
+    id: Optional[int] = None
 
 @dataclass
 class TouristPlace:
+    name: str
+    city: str
+    state: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    entry_fee: Optional[int] = None
+    timings: Optional[str] = None
+    best_season: Optional[str] = None
+    how_to_reach: Optional[str] = None
+    nearby_attractions: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    verified: int = 0
     id: Optional[int] = None
-    name: str = ""
-    description: str = ""
-    city: str = ""
-    state: str = ""
-    category: str = ""  # Historical, Religious, Adventure, etc.
-    entry_fee: str = ""
-    timings: str = ""
-    best_season: str = ""
-    latitude: float = 0.0
-    longitude: float = 0.0
-    verified: bool = False
-    created_at: datetime = None
-    updated_at: datetime = None
-
-@dataclass
-class TravelService:
-    id: Optional[int] = None
-    service_type: str = ""  # Cab, Bus, Train, Flight
-    provider_name: str = ""
-    contact: str = ""
-    email: str = ""
-    website: str = ""
-    routes: str = ""  # JSON string
-    rates: str = ""  # JSON string
-    state: str = ""
-    verified: bool = False
-    created_at: datetime = None
-    updated_at: datetime = None
