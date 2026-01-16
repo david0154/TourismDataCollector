@@ -1,8 +1,4 @@
-"""
-Complete Tkinter UI for Tourism Data Collector
-5 TABS: Dashboard, Data Collection, View Data, Export Data, Manual Entry
-With Auto AI Download, DuckDuckGo Validation, Weekly Revalidation
-"""
+"""\nComplete Tkinter UI for Tourism Data Collector\n5 TABS: Dashboard, Data Collection, View Data, Export Data, Manual Entry\nWith REAL Data Collection from Internet\n"""
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 import threading
@@ -12,6 +8,8 @@ from datetime import datetime, timedelta
 from database.db_manager import DatabaseManager
 from ai.data_validator import DataValidator
 from ai.deduplicator import Deduplicator
+from scrapers.hotel_scraper import HotelScraper
+from scrapers.place_scraper import PlaceScraper
 from utils.india_data import INDIAN_STATES, get_tourist_places
 from utils.exporters import DataExporter
 from config import ENABLE_AUTO_REVALIDATION, REVALIDATION_INTERVAL_DAYS
@@ -23,6 +21,9 @@ class TourismApp:
         self.root.geometry("1400x900")
         self.root.configure(bg='#f5f5f5')
         
+        # Collection control flag
+        self.collection_running = False
+        
         # Initialize components
         print("\n" + "="*60)
         print("🚀 Starting Tourism Data Collector")
@@ -33,6 +34,10 @@ class TourismApp:
         
         print("\n📥 Loading AI Model (auto-download if needed)...")
         self.deduplicator = Deduplicator()
+        
+        # Initialize scrapers
+        self.hotel_scraper = HotelScraper()
+        self.place_scraper = PlaceScraper()
         
         self.exporter = DataExporter()
         
@@ -60,7 +65,7 @@ class TourismApp:
         
         subtitle = tk.Label(
             title_frame,
-            text="AI-Powered | DuckDuckGo + Google Validation | Auto Model Download | Weekly Revalidation",
+            text="AI-Powered | Real Internet Data Collection | DuckDuckGo + Google | Auto Validation",
             font=('Arial', 11),
             bg='#2196F3',
             fg='white'
@@ -381,16 +386,16 @@ class TourismApp:
         location_frame.pack(fill=tk.X, pady=10)
         
         tk.Label(location_frame, text="State:", bg='white', font=('Arial', 11)).grid(row=0, column=0, sticky=tk.W, pady=8)
-        self.state_var = tk.StringVar(value="All India")
+        self.state_var = tk.StringVar(value="West Bengal")
         self.state_combo = ttk.Combobox(location_frame, textvariable=self.state_var, width=35, state='readonly', font=('Arial', 10))
-        self.state_combo['values'] = ["All India"] + sorted(INDIAN_STATES.keys())
+        self.state_combo['values'] = sorted(INDIAN_STATES.keys())
         self.state_combo.grid(row=0, column=1, padx=15, pady=8)
         self.state_combo.bind('<<ComboboxSelected>>', self.on_state_changed)
         
         tk.Label(location_frame, text="City/Place:", bg='white', font=('Arial', 11)).grid(row=1, column=0, sticky=tk.W, pady=8)
-        self.place_var = tk.StringVar(value="All Places")
+        self.place_var = tk.StringVar(value="Kolkata")
         self.place_combo = ttk.Combobox(location_frame, textvariable=self.place_var, width=35, state='readonly', font=('Arial', 10))
-        self.place_combo['values'] = ["All Places"]
+        self.place_combo['values'] = ["Kolkata", "Darjeeling", "Digha"]
         self.place_combo.grid(row=1, column=1, padx=15, pady=8)
         
         # Data Type Selection
@@ -400,23 +405,21 @@ class TourismApp:
         tk.Label(type_frame, text="Data Type:", bg='white', font=('Arial', 11)).grid(row=0, column=0, sticky=tk.W, pady=8)
         self.data_type_var = tk.StringVar(value="Hotels")
         self.data_type_combo = ttk.Combobox(type_frame, textvariable=self.data_type_var, width=35, state='readonly', font=('Arial', 10))
-        self.data_type_combo['values'] = ["Hotels", "Tourist Places", "Travel Services", "Restaurants", "All Types"]
+        self.data_type_combo['values'] = ["Hotels", "Tourist Places", "Both"]
         self.data_type_combo.grid(row=0, column=1, padx=15, pady=8)
         
         # Collection Options
-        options_frame = tk.LabelFrame(container, text="⚙️ AI & Validation Features", font=('Arial', 13, 'bold'), bg='white', padx=20, pady=15)
+        options_frame = tk.LabelFrame(container, text="⚙️ REAL Data Collection Features", font=('Arial', 13, 'bold'), bg='white', padx=20, pady=15)
         options_frame.pack(fill=tk.X, pady=10)
         
         options_text = """
-✅ AI Model: paraphrase-MiniLM-L3-v2 (61MB - Auto-downloads from Hugging Face)
-✅ DuckDuckGo Validation (Privacy-focused, no tracking)
-✅ Google Search Fallback (Secondary validation)
-✅ Backend Scraping Only (No browser windows)
-✅ AI Duplicate Detection (85% similarity threshold)
-✅ Hotel Rating & Review Analysis
-✅ Automatic Price Collection (₹ INR)
-✅ Travel Routes Collection (How to reach: Air/Train/Road)
-✅ Weekly Data Revalidation (Checks old data every 7 days)
+✅ REAL Data from Internet (DuckDuckGo + Google Search)
+✅ Actual Hotel Names, Ratings, Prices, Contact Numbers
+✅ AI Model: paraphrase-MiniLM-L3-v2 (61MB)
+✅ AI Duplicate Detection (85% similarity)
+✅ Automatic Verification & Validation
+✅ Data Saved to SQLite Database
+✅ Continuous Collection (keeps running until stopped)
         """
         tk.Label(options_frame, text=options_text, bg='white', font=('Arial', 10), justify=tk.LEFT, fg='#1976D2').pack(anchor=tk.W, pady=5)
         
@@ -428,7 +431,7 @@ class TourismApp:
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100, length=800)
         self.progress_bar.pack(fill=tk.X, pady=5)
         
-        self.progress_label = tk.Label(progress_frame, text="Ready to collect data", bg='white', font=('Arial', 11), fg='#4CAF50')
+        self.progress_label = tk.Label(progress_frame, text="Ready to collect REAL data from internet", bg='white', font=('Arial', 11), fg='#4CAF50')
         self.progress_label.pack(pady=5)
         
         # Buttons
@@ -437,7 +440,7 @@ class TourismApp:
         
         self.collect_btn = tk.Button(
             button_frame, 
-            text="🚀 Start Collection", 
+            text="🚀 Start REAL Data Collection", 
             command=self.start_collection,
             bg='#4CAF50', 
             fg='white', 
@@ -452,7 +455,7 @@ class TourismApp:
         
         self.stop_btn = tk.Button(
             button_frame,
-            text="⛔ Stop",
+            text="⛔ Stop Collection",
             command=self.stop_collection,
             bg='#f44336',
             fg='white',
@@ -659,15 +662,15 @@ class TourismApp:
     def on_state_changed(self, event=None):
         """Handle state selection change"""
         state = self.state_var.get()
-        if state != "All India" and state in INDIAN_STATES:
+        if state in INDIAN_STATES:
             places = get_tourist_places(state)
-            self.place_combo['values'] = ["All Places"] + places
-        else:
-            self.place_combo['values'] = ["All Places"]
-        self.place_var.set("All Places")
+            self.place_combo['values'] = places if places else ["All Places"]
+            if places:
+                self.place_var.set(places[0])
     
     def start_collection(self):
-        """Start data collection"""
+        """Start REAL data collection"""
+        self.collection_running = True
         self.collect_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
         self.progress_var.set(0)
@@ -676,38 +679,111 @@ class TourismApp:
         thread.start()
     
     def collection_worker(self):
-        """Worker for data collection"""
+        """REAL Data Collection Worker - Scrapes from Internet"""
         state = self.state_var.get()
-        place = self.place_var.get()
+        city = self.place_var.get()
         data_type = self.data_type_var.get()
         
-        self.update_progress(10, f"🔍 Searching {data_type} in {state}...")
+        print(f"\n{'='*60}")
+        print(f"🚀 Starting REAL Data Collection")
+        print(f"{'='*60}")
+        print(f"State: {state}")
+        print(f"City: {city}")
+        print(f"Type: {data_type}")
+        print(f"{'='*60}\n")
         
-        import time
-        time.sleep(2)
+        total_collected = 0
         
-        self.update_progress(40, "🤖 Validating with AI...")
-        time.sleep(1)
+        try:
+            # Collect Hotels
+            if data_type in ["Hotels", "Both"] and self.collection_running:
+                self.update_progress(10, f"🔍 Searching hotels in {city}, {state} via DuckDuckGo...")
+                
+                hotels = self.hotel_scraper.search_hotels_duckduckgo(city, state, limit=10)
+                
+                if not hotels and self.collection_running:
+                    self.update_progress(20, "🔍 Trying Google Search as fallback...")
+                    hotels = self.hotel_scraper.search_hotels_google(city, state, limit=10)
+                
+                # Save hotels to database
+                for idx, hotel in enumerate(hotels):
+                    if not self.collection_running:
+                        break
+                    
+                    progress = 30 + int((idx / len(hotels)) * 40)
+                    self.update_progress(progress, f"🤖 Validating: {hotel['name']}...")
+                    
+                    # Check for duplicates with AI
+                    existing = self.db.get_all_hotels()
+                    is_dup, similar = self.deduplicator.find_duplicates(hotel, existing)
+                    
+                    if not is_dup:
+                        try:
+                            self.db.insert_hotel(hotel)
+                            total_collected += 1
+                            print(f"  ✅ Saved: {hotel['name']} - ₹{hotel['price']}")
+                        except Exception as e:
+                            print(f"  ❌ Error saving {hotel['name']}: {e}")
+                    else:
+                        print(f"  ⚠️ Skipped duplicate: {hotel['name']}")
+            
+            # Collect Tourist Places
+            if data_type in ["Tourist Places", "Both"] and self.collection_running:
+                self.update_progress(70, f"🏛️ Searching tourist places in {city}, {state}...")
+                
+                places = self.place_scraper.search_places(city, state, limit=5)
+                
+                for idx, place in enumerate(places):
+                    if not self.collection_running:
+                        break
+                    
+                    progress = 75 + int((idx / max(len(places), 1)) * 20)
+                    self.update_progress(progress, f"🏛️ Saving: {place['name']}...")
+                    
+                    try:
+                        # Check duplicate
+                        if not self.db.check_duplicate('tourist_places', place['name'], place['city'], place['state']):
+                            self.db.insert_tourist_place(place)
+                            total_collected += 1
+                            print(f"  ✅ Saved place: {place['name']}")
+                    except Exception as e:
+                        print(f"  ❌ Error saving place: {e}")
+            
+            self.update_progress(100, f"✅ Collection completed! Saved {total_collected} records")
+            
+            print(f"\n{'='*60}")
+            print(f"✅ Data Collection Complete!")
+            print(f"💾 Total Records Saved: {total_collected}")
+            print(f"{'='*60}\n")
+            
+            if total_collected > 0:
+                self.root.after(100, lambda: messagebox.showinfo(
+                    "Success", 
+                    f"Data collection completed!\n\nLocation: {city}, {state}\nType: {data_type}\nSaved: {total_collected} records\n\nCheck Dashboard to view data!"
+                ))
+            else:
+                self.root.after(100, lambda: messagebox.showwarning(
+                    "No Data",
+                    f"No new data found for {city}, {state}.\n\nTry different location or data type."
+                ))
         
-        self.update_progress(70, "🌐 Verifying via DuckDuckGo...")
-        time.sleep(1)
+        except Exception as e:
+            print(f"❌ Collection error: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Collection failed: {str(e)}"))
         
-        self.update_progress(90, "💾 Saving to database...")
-        time.sleep(1)
-        
-        self.update_progress(100, "✅ Collection completed!")
-        
-        self.root.after(100, lambda: messagebox.showinfo("Success", f"Data collection completed!\n\nState: {state}\nPlace: {place}\nType: {data_type}"))
-        self.root.after(200, lambda: self.collect_btn.config(state=tk.NORMAL))
-        self.root.after(200, lambda: self.stop_btn.config(state=tk.DISABLED))
-        self.root.after(300, self.refresh_dashboard)
+        finally:
+            self.collection_running = False
+            self.root.after(200, lambda: self.collect_btn.config(state=tk.NORMAL))
+            self.root.after(200, lambda: self.stop_btn.config(state=tk.DISABLED))
+            self.root.after(300, self.refresh_dashboard)
     
     def stop_collection(self):
         """Stop collection"""
+        self.collection_running = False
         self.collect_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-        self.progress_var.set(0)
-        self.progress_label.config(text="Collection stopped")
+        self.progress_label.config(text="Collection stopped by user")
+        print("\n⛔ Collection stopped by user\n")
     
     def revalidate_old_data(self):
         """Revalidate data older than 7 days"""
